@@ -1,3 +1,5 @@
 delta-spark==3.1.0
 pandas
 boto3
+wheel
+ipykernel
