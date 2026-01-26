@@ -15,22 +15,40 @@ services:
     networks:
       - lakehouse-net
 
-  # Setup Bucket
-  # minio-setup:
-  #   image: minio/mc:RELEASE.2024-01-13T22-51-38Z
-  #   depends_on:
-  #     - minio
-  #   entrypoint: >
-  #     /bin/sh -c "
-  #     until mc alias set local http://minio:9000 minioadmin minioadmin; do echo '...waiting for minio...'; sleep 1; done;
-  #     mc mb --ignore-existing local/warehouse;
-  #     mc mb --ignore-existing local/landing;
-  #     exit 0;
-  #     "
-  #   networks:
-  #     - lakehouse-net
+  metastore-db:
+    image: postgres:14
+    container_name: metastore-db
+    environment:
+      POSTGRES_DB: metastore_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - lakehouse-net
 
-  # Compute Engine (Spark + Jupyter)
+  hive-metastore:
+    image: apache/hive:4.0.0
+    container_name: hive-metastore
+    depends_on:
+      - metastore-db
+    environment:
+      SERVICE_NAME: metastore
+      DB_DRIVER: postgres
+      HIVE_DB_HOST: metastore-db
+      SERVICE_OPTS: >-
+        -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://metastore-db:5432/metastore_db
+        -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver
+        -Djavax.jdo.option.ConnectionUserName=admin
+        -Djavax.jdo.option.ConnectionPassword=password
+        -Ddatanucleus.autoCreateAll=true
+    volumes:
+      - ./postgresql-42.7.9.jar:/opt/hive/lib/postgresql-42.7.4.jar
+    ports:
+      - "9083:9083" # The standard Thrift URI port
+    networks:
+      - lakehouse-net
+
   spark:
     build: .
     container_name: lakehouse-spark
@@ -46,6 +64,7 @@ services:
 
 volumes:
   minio_data:
+  pgdata:
 
 networks:
   lakehouse-net:
