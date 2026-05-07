@@ -67,8 +67,8 @@ final class DefaultKafkaSource implements KafkaSource {
             config.getTopic(), config.getBootstrapServers());
         try {
             String assignJson = buildAssignJson(range);
-            String startingOffsetsJson = buildOffsetsJson(range.getTopic(), range.getFromOffsets());
-            String endingOffsetsJson = buildOffsetsJson(range.getTopic(), range.getUntilOffsets());
+            String startingOffsetsJson = buildOffsetsJson(range.topic(), range.fromOffsets());
+            String endingOffsetsJson = buildOffsetsJson(range.topic(), range.untilOffsets());
             return spark.read()
                 .format("kafka")
                 .option("kafka.bootstrap.servers", config.getBootstrapServers())
@@ -111,9 +111,9 @@ final class DefaultKafkaSource implements KafkaSource {
      * Format: {"topic": [partition, ...]}
      */
     private String buildAssignJson(KafkaOffsetRange range) {
-        StringBuilder sb = new StringBuilder("{\"").append(range.getTopic()).append("\":[");
+        StringBuilder sb = new StringBuilder("{\"").append(range.topic()).append("\":[");
         boolean first = true;
-        for (Integer partition : range.getFromOffsets().keySet()) {
+        for (Integer partition : range.fromOffsets().keySet()) {
             if (!first) {
                 sb.append(',');
             }
