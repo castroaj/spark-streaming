@@ -97,13 +97,14 @@ tasks.register('integrationTest', Test) {
         includeTags 'integration'
     }
     shouldRunAfter test
-    // // Forward Docker environment so Testcontainers can find rootless Docker socket
-    // def dockerHost = System.getenv('DOCKER_HOST')
-    // if (dockerHost) {
-    //     environment 'DOCKER_HOST', dockerHost
-    // }
-    // environment 'TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE', '/run/user/1000/docker.sock'
-    // environment 'DOCKER_API_VERSION', '1.41'
+    // Java 17 module system: Spark 3.x accesses internal JDK APIs that require explicit opens
+    jvmArgs(
+        '--add-opens=java.base/sun.nio.ch=ALL-UNNAMED',
+        '--add-opens=java.base/java.nio=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang=ALL-UNNAMED',
+        '--add-opens=java.base/java.util=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang.invoke=ALL-UNNAMED'
+    )
 }
 
 // ---------------------------------------------------------------------------
