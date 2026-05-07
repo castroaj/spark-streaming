@@ -1,0 +1,138 @@
+plugins {
+    id 'java-library'
+    id 'com.gradleup.shadow'
+    id 'checkstyle'
+    id 'com.github.spotbugs'
+}
+
+group = 'com.github.castroaj'
+version = '0.1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+// ---------------------------------------------------------------------------
+// Java toolchain
+// ---------------------------------------------------------------------------
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+compileJava.options.encoding = 'UTF-8'
+compileTestJava.options.encoding = 'UTF-8'
+
+// ---------------------------------------------------------------------------
+// Dependencies (boilerplate only — connector deps added per module)
+// ---------------------------------------------------------------------------
+
+dependencies {
+    // Logging facade — implementation provided by consuming Spark job
+    compileOnly 'org.slf4j:slf4j-api:2.0.13'
+
+    // Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+    testImplementation platform('org.testcontainers:testcontainers-bom:1.20.4')
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.13'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// ---------------------------------------------------------------------------
+// Integration test source set
+// ---------------------------------------------------------------------------
+
+sourceSets {
+    integrationTest {
+        java {
+            srcDirs = ['src/integrationTest/java']
+        }
+        resources {
+            srcDirs = ['src/integrationTest/resources']
+        }
+        compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs integration tests against a real Spark session.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'integration'
+    }
+    shouldRunAfter test
+}
+
+// ---------------------------------------------------------------------------
+// Test task — unit tests only; integrationTest excluded per STANDARDS.md
+// ---------------------------------------------------------------------------
+
+test {
+    useJUnitPlatform()
+}
+
+// check = test + static analysis; integrationTest is NOT part of check
+check.dependsOn test
+
+// ---------------------------------------------------------------------------
+// Shadow JAR (uber/fat JAR for standalone spark-submit use)
+// ---------------------------------------------------------------------------
+
+shadowJar {
+    archiveClassifier = 'all'
+    relocate 'com.google', 'shadow.com.google'
+    relocate 'org.apache.commons', 'shadow.org.apache.commons'
+    relocate 'okhttp3', 'shadow.okhttp3'
+}
+
+// ---------------------------------------------------------------------------
+// Checkstyle
+// ---------------------------------------------------------------------------
+
+checkstyle {
+    toolVersion = '10.17.0'
+    configFile = file("${rootDir}/checkstyle/checkstyle.xml")
+    ignoreFailures = false
+    maxWarnings = 0
+}
+
+// ---------------------------------------------------------------------------
+// SpotBugs
+// ---------------------------------------------------------------------------
+
+spotbugs {
+    ignoreFailures = false
+    showProgress = true
+}
+
+spotbugsMain {
+    reports {
+        html {
+            required = true
+            outputLocation = layout.buildDirectory.file('reports/spotbugs/main.html')
+        }
+    }
+}
+
+spotbugsTest {
+    reports {
+        html {
+            required = true
+            outputLocation = layout.buildDirectory.file('reports/spotbugs/test.html')
+        }
+    }
+}
