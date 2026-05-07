@@ -10,6 +10,7 @@ version = '0.1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
+
 }
 
 // ---------------------------------------------------------------------------
@@ -32,14 +33,27 @@ compileTestJava.options.encoding = 'UTF-8'
 // ---------------------------------------------------------------------------
 
 dependencies {
+    // Spark — provided by cluster at runtime
+    compileOnly "org.apache.spark:spark-core_2.12:3.5.8"
+    compileOnly "org.apache.spark:spark-sql_2.12:3.5.8"
+
     // Logging facade — implementation provided by consuming Spark job
     compileOnly 'org.slf4j:slf4j-api:2.0.13'
 
+    // Kafka connector
+    implementation "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.8"
+
+    // Spark on test classpath for Mockito mocking of SparkSession/DataStreamReader etc.
+    testImplementation "org.apache.spark:spark-core_2.12:3.5.8"
+    testImplementation "org.apache.spark:spark-sql_2.12:3.5.8"
+
     // Testing
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
-    testImplementation platform('org.testcontainers:testcontainers-bom:1.20.4')
+    testImplementation platform('org.testcontainers:testcontainers-bom:2.0.5')
     testImplementation 'org.testcontainers:testcontainers'
-    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-kafka'
+    testImplementation "org.mockito:mockito-core:5.12.0"
     testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.13'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
@@ -66,6 +80,14 @@ configurations {
     integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
+dependencies {
+    
+    // Integration test Spark + Delta deps (declared after sourceSets to ensure config exists)
+    integrationTestImplementation "org.apache.spark:spark-core_2.12:3.5.8"
+    integrationTestImplementation "org.apache.spark:spark-sql_2.12:3.5.8"
+    integrationTestImplementation "io.delta:delta-spark_2.12:3.2.1"
+}
+
 tasks.register('integrationTest', Test) {
     description = 'Runs integration tests against a real Spark session.'
     group = 'verification'
@@ -75,6 +97,13 @@ tasks.register('integrationTest', Test) {
         includeTags 'integration'
     }
     shouldRunAfter test
+    // // Forward Docker environment so Testcontainers can find rootless Docker socket
+    // def dockerHost = System.getenv('DOCKER_HOST')
+    // if (dockerHost) {
+    //     environment 'DOCKER_HOST', dockerHost
+    // }
+    // environment 'TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE', '/run/user/1000/docker.sock'
+    // environment 'DOCKER_API_VERSION', '1.41'
 }
 
 // ---------------------------------------------------------------------------
@@ -133,6 +162,15 @@ spotbugsTest {
         html {
             required = true
             outputLocation = layout.buildDirectory.file('reports/spotbugs/test.html')
+        }
+    }
+}
+
+spotbugsIntegrationTest {
+    reports {
+        html {
+            required = true
+            outputLocation = layout.buildDirectory.file('reports/spotbugs/integrationTest.html')
         }
     }
 }
