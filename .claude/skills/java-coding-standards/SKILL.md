@@ -141,7 +141,64 @@ log.error("failed_fetch_market slug={}", slug, ex);
 ## Testing Expectations
 
 - JUnit 5 + AssertJ for fluent assertions
-- Mockito for mocking; avoid partial mocks where possible
+- Mockito for unit tests only (mocking collaborators within a single class under test)
+- **Integration tests must use `org.testcontainers`** — never mock external services (databases, message brokers, caches, etc.) in integration tests
 - Favor deterministic tests; no hidden sleeps
+
+### Integration Testing with Testcontainers
+
+Use `@Testcontainers` + `@Container` to spin up real service instances:
+
+```java
+// PASS: Real Postgres for repository/service integration tests
+@SpringBootTest
+@Testcontainers
+class MarketRepositoryIT {
+
+  @Container
+  static PostgreSQLContainer<?> postgres =
+      new PostgreSQLContainer<>("postgres:16-alpine");
+
+  @DynamicPropertySource
+  static void overrideDataSource(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", postgres::getJdbcUrl);
+    registry.add("spring.datasource.username", postgres::getUsername);
+    registry.add("spring.datasource.password", postgres::getPassword);
+  }
+
+  @Autowired
+  MarketRepository marketRepository;
+
+  @Test
+  void savesAndRetrievesMarket() {
+    var saved = marketRepository.save(new Market("slugA", "Market A"));
+    assertThat(marketRepository.findBySlug("slugA")).contains(saved);
+  }
+}
+```
+
+```java
+// PASS: Kafka integration test
+@SpringBootTest
+@Testcontainers
+class MarketEventConsumerIT {
+
+  @Container
+  static KafkaContainer kafka =
+      new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.0"));
+
+  @DynamicPropertySource
+  static void overrideKafka(DynamicPropertyRegistry registry) {
+    registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
+  }
+  // ...
+}
+```
+
+**Rules:**
+- Prefer `static` containers (shared across all tests in a class) to avoid repeated startup costs
+- Use `@DynamicPropertySource` to wire container ports into Spring context
+- Name IT classes with `IT` suffix (e.g., `MarketRepositoryIT`) so Maven Failsafe picks them up separately from unit tests
+- FAIL: Do not `@MockBean` a `DataSource`, `KafkaTemplate`, or any infrastructure component in an integration test
 
 **Remember**: Keep code intentional, typed, and observable. Optimize for maintainability over micro-optimizations unless proven necessary.
