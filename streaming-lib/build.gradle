@@ -10,6 +10,7 @@ version = '0.1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
+
 }
 
 // ---------------------------------------------------------------------------
@@ -32,14 +33,37 @@ compileTestJava.options.encoding = 'UTF-8'
 // ---------------------------------------------------------------------------
 
 dependencies {
+    // Spark — provided by cluster at runtime
+    compileOnly "org.apache.spark:spark-core_2.12:3.5.8"
+    compileOnly "org.apache.spark:spark-sql_2.12:3.5.8"
+
     // Logging facade — implementation provided by consuming Spark job
     compileOnly 'org.slf4j:slf4j-api:2.0.13'
 
+    // Jakarta Bean Validation — API + Hibernate Validator provider
+    implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+
+    // Kafka connector
+    implementation "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.8"
+
+    // Lombok — annotation processor only; not included in the thin JAR
+    compileOnly 'org.projectlombok:lombok:1.18.36'
+    annotationProcessor 'org.projectlombok:lombok:1.18.36'
+    testCompileOnly 'org.projectlombok:lombok:1.18.36'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.36'
+
+    // Spark on test classpath for Mockito mocking of SparkSession/DataStreamReader etc.
+    testImplementation "org.apache.spark:spark-core_2.12:3.5.8"
+    testImplementation "org.apache.spark:spark-sql_2.12:3.5.8"
+
     // Testing
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
-    testImplementation platform('org.testcontainers:testcontainers-bom:1.20.4')
+    testImplementation platform('org.testcontainers:testcontainers-bom:2.0.5')
     testImplementation 'org.testcontainers:testcontainers'
-    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-kafka'
+    testImplementation "org.mockito:mockito-core:5.12.0"
     testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.13'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
@@ -66,6 +90,14 @@ configurations {
     integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
+dependencies {
+    
+    // Integration test Spark + Delta deps (declared after sourceSets to ensure config exists)
+    integrationTestImplementation "org.apache.spark:spark-core_2.12:3.5.8"
+    integrationTestImplementation "org.apache.spark:spark-sql_2.12:3.5.8"
+    integrationTestImplementation "io.delta:delta-spark_2.12:3.2.1"
+}
+
 tasks.register('integrationTest', Test) {
     description = 'Runs integration tests against a real Spark session.'
     group = 'verification'
@@ -75,6 +107,14 @@ tasks.register('integrationTest', Test) {
         includeTags 'integration'
     }
     shouldRunAfter test
+    // Java 17 module system: Spark 3.x accesses internal JDK APIs that require explicit opens
+    jvmArgs(
+        '--add-opens=java.base/sun.nio.ch=ALL-UNNAMED',
+        '--add-opens=java.base/java.nio=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang=ALL-UNNAMED',
+        '--add-opens=java.base/java.util=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang.invoke=ALL-UNNAMED'
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -133,6 +173,15 @@ spotbugsTest {
         html {
             required = true
             outputLocation = layout.buildDirectory.file('reports/spotbugs/test.html')
+        }
+    }
+}
+
+spotbugsIntegrationTest {
+    reports {
+        html {
+            required = true
+            outputLocation = layout.buildDirectory.file('reports/spotbugs/integrationTest.html')
         }
     }
 }

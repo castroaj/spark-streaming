@@ -30,7 +30,7 @@ The library provides **building blocks, not a framework**. Each abstraction is i
 The library is a single Gradle project with one production source set and one integration test source set. The package layout mirrors a logical module decomposition:
 
 ```
-com.example.streaminglib
+com.github.castroaj.streaminglib
 ├── kafka/          # KafkaSource abstraction
 ├── hive/           # HiveMetastoreClient abstraction
 ├── s3/             # S3StoreClient abstraction
@@ -58,7 +58,7 @@ Consume records from a Kafka topic via Spark Structured Streaming's native Kafka
 ### Interface
 
 ```java
-package com.example.streaminglib.kafka;
+package com.github.castroaj.streaminglib.kafka;
 
 public interface KafkaSource {
 
@@ -77,12 +77,23 @@ public interface KafkaSource {
 
     void close();
 }
+
+// Value object for bounded reads
+public record KafkaOffsetRange(
+        @NotBlank String topic,
+        @NotNull @NotEmpty Map<Integer, Long> fromOffsets,
+        @NotNull @NotEmpty Map<Integer, Long> untilOffsets) {
+
+    public static KafkaOffsetRange of(String topic,
+                                      Map<Integer, Long> fromOffsets,
+                                      Map<Integer, Long> untilOffsets) { ... }
+}
 ```
 
 ### Configuration
 
 ```java
-package com.example.streaminglib.kafka;
+package com.github.castroaj.streaminglib.kafka;
 
 public final class KafkaSourceConfig {
     // Required
@@ -106,7 +117,7 @@ public final class KafkaSourceConfig {
         public Builder maxOffsetsPerTrigger(int max) { ... }
         public Builder pollTimeout(Duration timeout) { ... }
         public Builder extraOption(String key, String value) { ... }
-        public KafkaSourceConfig build() { ... } // validates required fields
+        public KafkaSourceConfig build() { ... } // validates via Jakarta Bean Validation; throws ConstraintViolationException
     }
 }
 ```
@@ -138,7 +149,7 @@ Provide typed operations against the Hive Metastore Thrift endpoint for database
 ### Interface
 
 ```java
-package com.example.streaminglib.hive;
+package com.github.castroaj.streaminglib.hive;
 
 public interface HiveMetastoreClient {
 
@@ -172,7 +183,7 @@ public interface HiveMetastoreClient {
 ### Configuration
 
 ```java
-package com.example.streaminglib.hive;
+package com.github.castroaj.streaminglib.hive;
 
 public final class HiveMetastoreConfig {
     // Required
@@ -190,7 +201,7 @@ public final class HiveMetastoreConfig {
         public Builder connectionTimeout(Duration timeout) { ... }
         public Builder maxRetries(int retries) { ... }
         public Builder extraSparkConf(String key, String value) { ... }
-        public HiveMetastoreConfig build() { ... }
+        public HiveMetastoreConfig build() { ... } // validates via Jakarta Bean Validation; throws ConstraintViolationException
     }
 }
 ```
@@ -224,7 +235,7 @@ Provide path-based operations against S3-compatible object storage (MinIO or AWS
 ### Interface
 
 ```java
-package com.example.streaminglib.s3;
+package com.github.castroaj.streaminglib.s3;
 
 public interface S3StoreClient {
 
@@ -254,7 +265,7 @@ public interface S3StoreClient {
 ### Configuration
 
 ```java
-package com.example.streaminglib.s3;
+package com.github.castroaj.streaminglib.s3;
 
 public final class S3StoreConfig {
     // Required
@@ -278,7 +289,7 @@ public final class S3StoreConfig {
         public Builder pathStyleAccess(boolean enabled) { ... }
         public Builder sslEnabled(boolean enabled) { ... }
         public Builder extraSparkConf(String key, String value) { ... }
-        public S3StoreConfig build() { ... }
+        public S3StoreConfig build() { ... } // validates via Jakarta Bean Validation; throws ConstraintViolationException
     }
 }
 ```
@@ -312,7 +323,7 @@ Wrap Spark Structured Streaming's `writeStream` API for Delta format, encapsulat
 ### Interfaces
 
 ```java
-package com.example.streaminglib.delta;
+package com.github.castroaj.streaminglib.delta;
 
 public interface DeltaStreamWriter {
 
@@ -340,7 +351,7 @@ public interface StreamingQueryHandle {
 ### Configuration
 
 ```java
-package com.example.streaminglib.delta;
+package com.github.castroaj.streaminglib.delta;
 
 public final class DeltaStreamWriterConfig {
     // Required
@@ -366,7 +377,7 @@ public final class DeltaStreamWriterConfig {
         public Builder clusteringColumns(List<String> columns) { ... }
         public Builder maxRecordsPerFile(long max) { ... }
         public Builder extraOption(String key, String value) { ... }
-        public DeltaStreamWriterConfig build() { ... }
+        public DeltaStreamWriterConfig build() { ... } // validates via Jakarta Bean Validation; throws ConstraintViolationException
     }
 }
 ```
@@ -374,7 +385,7 @@ public final class DeltaStreamWriterConfig {
 ### TriggerConfig
 
 ```java
-package com.example.streaminglib.delta;
+package com.github.castroaj.streaminglib.delta;
 
 public sealed interface TriggerConfig permits
         TriggerConfig.ProcessingTime,
@@ -424,6 +435,8 @@ StreamingLibException  (RuntimeException)
 
 Catch `StreamingLibException` for uniform handling or a specific subtype for targeted recovery. The original connector exception is always available via `getCause()`.
 
+**Validation exceptions**: `*Config.build()` and `*Factory.create()` throw `jakarta.validation.ConstraintViolationException` (also unchecked) when required fields are missing or blank. This is thrown before any connector or Spark interaction.
+
 ---
 
 ## Dependencies (Gradle coordinates)
@@ -432,31 +445,39 @@ Catch `StreamingLibException` for uniform handling or a specific subtype for tar
 // Spark — provided by cluster at runtime
 compileOnly "org.apache.spark:spark-core_2.12:3.5.8"
 compileOnly "org.apache.spark:spark-sql_2.12:3.5.8"
-compileOnly "org.apache.spark:spark-streaming_2.12:3.5.8"
-
-// Delta Lake
-implementation "io.delta:delta-spark_2.12:3.2.1"
-
-// Kafka connector
-implementation "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.8"
-
-// Hadoop S3A (aligned with Spark 3.5.x bundled Hadoop version)
-implementation "org.apache.hadoop:hadoop-aws:3.3.4"
-implementation "com.amazonaws:aws-java-sdk-bundle:1.12.262"
-
-// Hive Metastore Thrift client (matches docker-compose apache/hive:4.0.0)
-implementation "org.apache.hive:hive-metastore:4.0.0"
-implementation "org.apache.thrift:libthrift:0.16.0"
 
 // Logging facade — implementation provided by consuming job
 compileOnly "org.slf4j:slf4j-api:2.0.13"
 
+// Lombok — annotation processor only; not included in the thin JAR
+compileOnly "org.projectlombok:lombok:1.18.36"
+annotationProcessor "org.projectlombok:lombok:1.18.36"
+
+// Jakarta Bean Validation — API + Hibernate Validator provider
+implementation "jakarta.validation:jakarta.validation-api:3.0.2"
+implementation "org.hibernate.validator:hibernate-validator:8.0.1.Final"
+
+// Kafka connector (implemented)
+implementation "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.8"
+
+// Hadoop S3A — planned for S3 module (aligned with Spark 3.5.x bundled Hadoop version)
+implementation "org.apache.hadoop:hadoop-aws:3.3.4"
+implementation "com.amazonaws:aws-java-sdk-bundle:1.12.262"
+
+// Hive Metastore Thrift client — planned for Hive module (matches docker-compose apache/hive:4.0.0)
+implementation "org.apache.hive:hive-metastore:4.0.0"
+implementation "org.apache.thrift:libthrift:0.16.0"
+
 // Testing
 testImplementation "org.junit.jupiter:junit-jupiter:5.11.0"
 testImplementation "org.mockito:mockito-core:5.12.0"
-testImplementation "org.slf4j:slf4j-simple:2.0.13"
+testImplementation platform("org.testcontainers:testcontainers-bom:2.0.5")
+testImplementation "org.testcontainers:testcontainers"
+testImplementation "org.testcontainers:testcontainers-junit-jupiter"
+testImplementation "org.testcontainers:testcontainers-kafka"
+testRuntimeOnly "org.slf4j:slf4j-simple:2.0.13"
 
-// Integration testing — real Spark session
+// Integration testing — real Spark session + Delta
 integrationTestImplementation "org.apache.spark:spark-core_2.12:3.5.8"
 integrationTestImplementation "org.apache.spark:spark-sql_2.12:3.5.8"
 integrationTestImplementation "io.delta:delta-spark_2.12:3.2.1"
@@ -466,6 +487,7 @@ Version rationale:
 - `hadoop-aws:3.3.4` and `aws-java-sdk-bundle:1.12.262` match the versions used in the sibling `ipyworkbook` demo environment.
 - `hive-metastore:4.0.0` matches the `apache/hive:4.0.0` image in `docker-compose.yml`.
 - `delta-spark_2.12:3.2.1` is compatible with Spark 3.5.x per the [Delta Lake release matrix](https://docs.delta.io/latest/releases.html).
+- `hibernate-validator:8.0.1.Final` is the Hibernate Validator release supporting `jakarta.validation` 3.0 (Jakarta EE 10) on Java 17. Configured with `ParameterMessageInterpolator` to avoid requiring a Jakarta EL implementation on the Spark classpath.
 
 ---
 
