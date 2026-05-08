@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import lombok.Getter;
+
 /**
  * Immutable configuration for a {@link KafkaSource}.
  *
@@ -15,6 +17,7 @@ import java.util.Map;
  *
  * <p>Instances are immutable and thread-safe.
  */
+@Getter
 public final class KafkaSourceConfig {
 
     private static final int DEFAULT_MAX_OFFSETS_PER_TRIGGER = 100_000;
@@ -45,74 +48,6 @@ public final class KafkaSourceConfig {
      */
     public static Builder builder() {
         return new Builder();
-    }
-
-    /**
-     * Returns the Kafka bootstrap servers string. Mapped to {@code kafka.bootstrap.servers}.
-     *
-     * @return comma-separated host:port list
-     */
-    public String getBootstrapServers() {
-        return bootstrapServers;
-    }
-
-    /**
-     * Returns the Kafka topic to subscribe to. Mapped to the Spark {@code subscribe} option.
-     *
-     * @return topic name
-     */
-    public String getTopic() {
-        return topic;
-    }
-
-    /**
-     * Returns the consumer group ID prefix. Mapped to {@code groupIdPrefix}.
-     *
-     * @return group ID string
-     */
-    public String getGroupId() {
-        return groupId;
-    }
-
-    /**
-     * Returns the starting offset policy applied when no committed offset exists.
-     *
-     * @return starting offset policy; defaults to {@link StartingOffsets#EARLIEST}
-     */
-    public StartingOffsets getStartingOffsets() {
-        return startingOffsets;
-    }
-
-    /**
-     * Returns the maximum number of offsets processed per micro-batch trigger.
-     * Mapped to {@code maxOffsetsPerTrigger}.
-     *
-     * @return max offsets per trigger; defaults to 100,000
-     */
-    public int getMaxOffsetsPerTrigger() {
-        return maxOffsetsPerTrigger;
-    }
-
-    /**
-     * Returns the Kafka consumer poll timeout.
-     * Mapped to {@code kafkaConsumer.pollTimeoutMs} (converted to milliseconds).
-     *
-     * @return poll timeout; defaults to 120 seconds
-     */
-    public Duration getPollTimeout() {
-        return pollTimeout;
-    }
-
-    /**
-     * Returns the map of extra Spark-Kafka source options applied after all standard options.
-     *
-     * <p>These options override any library-set defaults. Use the escape hatch for connector
-     * properties not directly exposed by this config.
-     *
-     * @return unmodifiable map of extra options; never null; may be empty
-     */
-    public Map<String, String> getExtraOptions() {
-        return extraOptions;
     }
 
     /**

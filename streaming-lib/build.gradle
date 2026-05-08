@@ -43,6 +43,12 @@ dependencies {
     // Kafka connector
     implementation "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.8"
 
+    // Lombok — annotation processor only; not included in the thin JAR
+    compileOnly 'org.projectlombok:lombok:1.18.36'
+    annotationProcessor 'org.projectlombok:lombok:1.18.36'
+    testCompileOnly 'org.projectlombok:lombok:1.18.36'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.36'
+
     // Spark on test classpath for Mockito mocking of SparkSession/DataStreamReader etc.
     testImplementation "org.apache.spark:spark-core_2.12:3.5.8"
     testImplementation "org.apache.spark:spark-sql_2.12:3.5.8"

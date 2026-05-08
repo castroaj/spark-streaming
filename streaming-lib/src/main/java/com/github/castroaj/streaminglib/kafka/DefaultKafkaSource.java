@@ -1,14 +1,16 @@
 package com.github.castroaj.streaminglib.kafka;
 
-import com.github.castroaj.streaminglib.exception.KafkaSourceException;
 import java.util.Map;
 import java.util.Objects;
+
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.streaming.DataStreamReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.github.castroaj.streaminglib.exception.KafkaSourceException;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Package-private default implementation of {@link KafkaSource}.
@@ -16,9 +18,8 @@ import org.slf4j.LoggerFactory;
  * <p>Wraps Spark Structured Streaming's native Kafka source connector.
  * Obtain instances via {@link KafkaSourceFactory#create}.
  */
+@Slf4j
 final class DefaultKafkaSource implements KafkaSource {
-
-    private static final Logger LOG = LoggerFactory.getLogger(DefaultKafkaSource.class);
 
     private final SparkSession spark;
     private final KafkaSourceConfig config;
@@ -33,7 +34,7 @@ final class DefaultKafkaSource implements KafkaSource {
     @Override
     public Dataset<Row> readStream() {
         checkNotClosed();
-        LOG.debug("Building streaming reader for topic '{}' at '{}'",
+        log.debug("Building streaming reader for topic '{}' at '{}'",
             config.getTopic(), config.getBootstrapServers());
         try {
             DataStreamReader reader = spark.readStream()
@@ -63,7 +64,7 @@ final class DefaultKafkaSource implements KafkaSource {
     public Dataset<Row> readBatch(KafkaOffsetRange range) {
         Objects.requireNonNull(range, "range must not be null");
         checkNotClosed();
-        LOG.debug("Building batch reader for topic '{}' at '{}'",
+        log.debug("Building batch reader for topic '{}' at '{}'",
             config.getTopic(), config.getBootstrapServers());
         try {
             String assignJson = buildAssignJson(range);
@@ -90,7 +91,7 @@ final class DefaultKafkaSource implements KafkaSource {
     public void close() {
         if (!closed) {
             closed = true;
-            LOG.info("Closed KafkaSource for topic '{}' at '{}'",
+            log.info("Closed KafkaSource for topic '{}' at '{}'",
                 config.getTopic(), config.getBootstrapServers());
         }
     }

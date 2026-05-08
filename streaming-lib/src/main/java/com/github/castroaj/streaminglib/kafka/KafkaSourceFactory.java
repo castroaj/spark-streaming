@@ -1,7 +1,10 @@
 package com.github.castroaj.streaminglib.kafka;
 
 import java.util.Objects;
+
 import org.apache.spark.sql.SparkSession;
+
+import lombok.experimental.UtilityClass;
 
 /**
  * Factory for creating {@link KafkaSource} instances.
@@ -10,10 +13,8 @@ import org.apache.spark.sql.SparkSession;
  * The caller provides a live {@link SparkSession} and a fully-built {@link KafkaSourceConfig};
  * the library never creates or configures a {@code SparkSession} internally.
  */
+@UtilityClass
 public final class KafkaSourceFactory {
-
-    private KafkaSourceFactory() {
-    }
 
     /**
      * Creates a new {@link KafkaSource} bound to the given Spark session and configuration.
@@ -22,7 +23,6 @@ public final class KafkaSourceFactory {
      * @param config the Kafka source configuration; must not be null
      * @return a ready-to-use {@link KafkaSource}
      * @throws IllegalArgumentException if {@code spark} or {@code config} is null
-     * @throws KafkaSourceException     if the source cannot be initialized
      */
     public static KafkaSource create(SparkSession spark, KafkaSourceConfig config) {
         Objects.requireNonNull(spark, "spark must not be null");
