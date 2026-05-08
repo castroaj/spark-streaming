@@ -2,9 +2,10 @@ package com.github.castroaj.streaminglib.kafka;
 
 import java.util.Objects;
 
+import lombok.experimental.UtilityClass;
 import org.apache.spark.sql.SparkSession;
 
-import lombok.experimental.UtilityClass;
+import com.github.castroaj.streaminglib.util.ValidationUtils;
 
 /**
  * Factory for creating {@link KafkaSource} instances.
@@ -22,11 +23,13 @@ public final class KafkaSourceFactory {
      * @param spark  the active SparkSession; must not be null
      * @param config the Kafka source configuration; must not be null
      * @return a ready-to-use {@link KafkaSource}
-     * @throws IllegalArgumentException if {@code spark} or {@code config} is null
+     * @throws NullPointerException if {@code spark} or {@code config} is null
+     * @throws ConstraintViolationException if {@code config} violates any constraint
      */
     public static KafkaSource create(SparkSession spark, KafkaSourceConfig config) {
         Objects.requireNonNull(spark, "spark must not be null");
         Objects.requireNonNull(config, "config must not be null");
+        ValidationUtils.validate(config);
         return new DefaultKafkaSource(spark, config);
     }
 }

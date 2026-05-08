@@ -40,6 +40,10 @@ dependencies {
     // Logging facade — implementation provided by consuming Spark job
     compileOnly 'org.slf4j:slf4j-api:2.0.13'
 
+    // Jakarta Bean Validation — API + Hibernate Validator provider
+    implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+
     // Kafka connector
     implementation "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.8"
 

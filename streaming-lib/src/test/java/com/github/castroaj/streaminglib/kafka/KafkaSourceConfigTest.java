@@ -6,6 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 
 class KafkaSourceConfigTest {
@@ -32,46 +36,47 @@ class KafkaSourceConfigTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void build_missingBootstrapServers_throwsIllegalArgumentException() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+    void build_missingBootstrapServers_throwsConstraintViolationException() {
+        ConstraintViolationException ex = assertThrows(ConstraintViolationException.class, () ->
             KafkaSourceConfig.builder()
                 .topic("my-topic")
                 .groupId("my-group")
                 .build());
-        assertTrue(ex.getMessage().contains("bootstrapServers"),
-            "Exception message should mention 'bootstrapServers'");
+        Set<String> paths = violationPaths(ex);
+        assertTrue(paths.contains("bootstrapServers"),
+            "Violations should include 'bootstrapServers'");
     }
 
     @Test
-    void build_missingTopic_throwsIllegalArgumentException() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+    void build_missingTopic_throwsConstraintViolationException() {
+        ConstraintViolationException ex = assertThrows(ConstraintViolationException.class, () ->
             KafkaSourceConfig.builder()
                 .bootstrapServers("kafka:9092")
                 .groupId("my-group")
                 .build());
-        assertTrue(ex.getMessage().contains("topic"),
-            "Exception message should mention 'topic'");
+        Set<String> paths = violationPaths(ex);
+        assertTrue(paths.contains("topic"), "Violations should include 'topic'");
     }
 
     @Test
-    void build_missingGroupId_throwsIllegalArgumentException() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+    void build_missingGroupId_throwsConstraintViolationException() {
+        ConstraintViolationException ex = assertThrows(ConstraintViolationException.class, () ->
             KafkaSourceConfig.builder()
                 .bootstrapServers("kafka:9092")
                 .topic("my-topic")
                 .build());
-        assertTrue(ex.getMessage().contains("groupId"),
-            "Exception message should mention 'groupId'");
+        Set<String> paths = violationPaths(ex);
+        assertTrue(paths.contains("groupId"), "Violations should include 'groupId'");
     }
 
     @Test
-    void build_multipleMissingFields_messageListsAll() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+    void build_multipleMissingFields_violationsListAll() {
+        ConstraintViolationException ex = assertThrows(ConstraintViolationException.class, () ->
             KafkaSourceConfig.builder().build());
-        String msg = ex.getMessage();
-        assertTrue(msg.contains("bootstrapServers"), "Should mention bootstrapServers");
-        assertTrue(msg.contains("topic"), "Should mention topic");
-        assertTrue(msg.contains("groupId"), "Should mention groupId");
+        Set<String> paths = violationPaths(ex);
+        assertTrue(paths.contains("bootstrapServers"), "Should report bootstrapServers");
+        assertTrue(paths.contains("topic"), "Should report topic");
+        assertTrue(paths.contains("groupId"), "Should report groupId");
     }
 
     // -------------------------------------------------------------------------
@@ -160,6 +165,12 @@ class KafkaSourceConfigTest {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    private Set<String> violationPaths(ConstraintViolationException ex) {
+        return ex.getConstraintViolations().stream()
+            .map(v -> v.getPropertyPath().toString())
+            .collect(Collectors.toSet());
+    }
 
     private KafkaSourceConfig minimalConfig() {
         return KafkaSourceConfig.builder()

@@ -1,19 +1,22 @@
 package com.github.castroaj.streaminglib.kafka;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
+
+import com.github.castroaj.streaminglib.util.ValidationUtils;
 
 /**
  * Immutable configuration for a {@link KafkaSource}.
  *
  * <p>Constructed exclusively via the inner {@link Builder}. Required fields are validated
- * at {@link Builder#build()} time; missing fields cause an {@link IllegalArgumentException}
- * listing all absent fields in a single message, before any Spark or Kafka connection is made.
+ * at {@link Builder#build()} time via Jakarta Bean Validation; constraint violations are reported
+ * as a {@link jakarta.validation.ConstraintViolationException} before any Spark or Kafka connection is made.
  *
  * <p>Instances are immutable and thread-safe.
  */
@@ -23,11 +26,17 @@ public final class KafkaSourceConfig {
     private static final int DEFAULT_MAX_OFFSETS_PER_TRIGGER = 100_000;
     private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(120);
 
+    @NotBlank
     private final String bootstrapServers;
+    @NotBlank
     private final String topic;
+    @NotBlank
     private final String groupId;
+    @NotNull
     private final StartingOffsets startingOffsets;
+    @Positive
     private final int maxOffsetsPerTrigger;
+    @NotNull
     private final Duration pollTimeout;
     private final Map<String, String> extraOptions;
 
@@ -155,24 +164,12 @@ public final class KafkaSourceConfig {
          * <p>Required fields: {@code bootstrapServers}, {@code topic}, {@code groupId}.
          *
          * @return a validated, immutable config
-         * @throws IllegalArgumentException if any required fields are missing, listing all absent fields
+         * @throws ConstraintViolationException if any required field is null or blank
          */
         public KafkaSourceConfig build() {
-            List<String> missing = new ArrayList<>();
-            if (bootstrapServers == null || bootstrapServers.isBlank()) {
-                missing.add("bootstrapServers");
-            }
-            if (topic == null || topic.isBlank()) {
-                missing.add("topic");
-            }
-            if (groupId == null || groupId.isBlank()) {
-                missing.add("groupId");
-            }
-            if (!missing.isEmpty()) {
-                throw new IllegalArgumentException(
-                    "KafkaSourceConfig is missing required fields: " + String.join(", ", missing));
-            }
-            return new KafkaSourceConfig(this);
+            KafkaSourceConfig config = new KafkaSourceConfig(this);
+            ValidationUtils.validate(config);
+            return config;
         }
     }
 }

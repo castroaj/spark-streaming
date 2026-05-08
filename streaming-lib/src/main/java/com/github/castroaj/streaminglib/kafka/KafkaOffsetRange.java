@@ -3,6 +3,12 @@ package com.github.castroaj.streaminglib.kafka;
 import java.util.Map;
 import java.util.Objects;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+
+import com.github.castroaj.streaminglib.util.ValidationUtils;
+
 /**
  * Immutable value object describing a bounded offset range for a single Kafka topic.
  *
@@ -17,9 +23,9 @@ import java.util.Objects;
  * @param untilOffsets map of partition to exclusive end offset
  */
 public record KafkaOffsetRange(
-        String topic,
-        Map<Integer, Long> fromOffsets,
-        Map<Integer, Long> untilOffsets) {
+        @NotBlank String topic,
+        @NotNull @NotEmpty Map<Integer, Long> fromOffsets,
+        @NotNull @NotEmpty Map<Integer, Long> untilOffsets) {
 
     /** Compact canonical constructor — validates and defensively copies the maps. */
     public KafkaOffsetRange {
@@ -36,11 +42,14 @@ public record KafkaOffsetRange(
      * @param topic        the Kafka topic name
      * @param fromOffsets  map of partition to inclusive start offset
      * @param untilOffsets map of partition to exclusive end offset
-     * @return an immutable offset range
+     * @return an immutable, validated offset range
+     * @throws jakarta.validation.ConstraintViolationException if any argument violates a constraint
      */
     public static KafkaOffsetRange of(String topic,
                                       Map<Integer, Long> fromOffsets,
                                       Map<Integer, Long> untilOffsets) {
-        return new KafkaOffsetRange(topic, fromOffsets, untilOffsets);
+        KafkaOffsetRange range = new KafkaOffsetRange(topic, fromOffsets, untilOffsets);
+        ValidationUtils.validate(range);
+        return range;
     }
 }
