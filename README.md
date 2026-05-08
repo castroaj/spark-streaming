@@ -1,4 +1,4 @@
-# delta-lake-demo
+# spark-streaming
 
 A hands-on demonstration of a Spark-based streaming lakehouse built entirely with open-source tooling and Docker. The repository is organized into two complementary parts: an interactive notebook environment for exploring Delta Lake features, and a reusable Java library that abstracts the connector surface those notebooks rely on.
 
@@ -21,7 +21,7 @@ The notebooks let you explore the concepts interactively. The `streaming-lib` Ja
 ## Repository Layout
 
 ```
-delta-lake-demo/
+spark-streaming/
 ├── ipyworkbook/        # Docker Compose stack + JupyterLab notebooks
 │   ├── docker-compose.yml
 │   └── src/
@@ -43,35 +43,11 @@ delta-lake-demo/
 
 ## Part 1: Interactive Notebooks (`ipyworkbook/`)
 
-A self-contained Docker Compose stack that brings up the full lakehouse in one command.
+A self-contained Docker Compose stack that brings up the full lakehouse in one command. The stack includes JupyterLab with Spark, MinIO for S3-compatible object storage, a Hive Metastore backed by PostgreSQL, and exposes Spark UI and MinIO console for observability.
 
-### Stack
+**`Delta-Lake-Lakehouse.ipynb`** covers core Delta Lake features: table creation, upsert via `DeltaTable.merge`, schema evolution, time travel (`versionAsOf`), and liquid clustering (`clusterBy`). Tables are written to MinIO and registered in Hive.
 
-| Service | Role |
-|---|---|
-| JupyterLab + Spark | Notebook interface and compute engine |
-| MinIO | S3-compatible object storage (`s3a://warehouse/`) |
-| Hive Metastore | Table catalog via Thrift (`thrift://hive-metastore:9083`) |
-| PostgreSQL | Metastore backing database |
-
-### Running the stack
-
-```bash
-cd ipyworkbook/
-docker compose up --build
-```
-
-| UI | URL |
-|---|---|
-| JupyterLab | http://localhost:8888 (token in docker logs) |
-| MinIO Console | http://localhost:9001 (minioadmin / minioadmin) |
-| Spark UI | http://localhost:4040 (active only during a running job) |
-
-### Notebooks
-
-**`Delta-Lake-Lakehouse.ipynb`** — Covers core Delta Lake features: table creation, upsert via `DeltaTable.merge`, schema evolution, time travel (`versionAsOf`), and liquid clustering (`clusterBy`). Tables are written to MinIO and registered in Hive.
-
-**`Delta-Lake-Streaming-Simulation.ipynb`** — Demonstrates Spark Structured Streaming writing Delta tables to MinIO. Uses a synthetic `rate` source, writes on a 30-second trigger interval, and shows how to query mid-stream.
+**`Delta-Lake-Streaming-Simulation.ipynb`** demonstrates Spark Structured Streaming writing Delta tables to MinIO using a synthetic `rate` source.
 
 ---
 
@@ -96,20 +72,7 @@ A Java 17 library that wraps the same four connector surfaces the notebooks use 
 | `s3` | `S3StoreClient` | Path-based object storage operations against S3/MinIO |
 | `delta` | `DeltaStreamWriter` | Manage `StreamingQuery` lifecycle for Delta format writes |
 
-Each package exposes exactly three public types: an interface, an immutable `*Config` built via an inner builder, and a `*Factory` entry point.
-
-### Building
-
-```bash
-cd streaming-lib/
-
-./gradlew build           # compile + unit tests + static analysis (Checkstyle, SpotBugs)
-./gradlew integrationTest # integration tests against real Spark (local[2])
-./gradlew shadowJar       # fat JAR for spark-submit (classifier: 'all')
-./gradlew javadoc         # HTML API docs
-```
-
-See `streaming-lib/SPEC.md` for the full API specification and `streaming-lib/STANDARDS.md` for engineering standards.
+Each package exposes exactly three public types: an interface, an immutable `*Config` built via an inner builder, and a `*Factory` entry point. See `streaming-lib/SPEC.md` for the full API specification and `streaming-lib/STANDARDS.md` for engineering standards.
 
 ---
 
